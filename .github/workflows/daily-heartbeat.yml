@@ -1,0 +1,27 @@
+name: daily-heartbeat
+
+on:
+  schedule:
+    # 매일 00:07 UTC (= KST 09:07) — 정각/30분을 피해요
+    - cron: "7 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 작업실 심장박동 기록
+        run: |
+          date -u "+%Y-%m-%d %H:%M:%S UTC heartbeat 🤖" >> .claude/worklog.txt
+      - name: 커밋 & 푸시
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .claude/worklog.txt
+          git diff --cached --quiet && echo "변경 없음, 커밋 생략" && exit 0
+          git commit -m "자동 심장박동 🤖"
+          git push
