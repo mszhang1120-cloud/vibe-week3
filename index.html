@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>오늘 뭐 먹지? 🍱</title>
+<style>
+  :root {
+    --bg: #FFF5E6;
+    --card: #FFFFFF;
+    --ink: #4A3B2A;
+    --ink-soft: #8C7B68;
+    --accent: #FF8FA3;
+    --accent-soft: #FFD6E0;
+    --shadow: 0 8px 24px rgba(180, 140, 100, 0.15);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+                 "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    min-height: 100vh;
+  }
+  .app {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 32px 20px 80px;
+  }
+  header {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+  h1 {
+    font-size: 32px;
+    margin: 0 0 6px;
+    letter-spacing: -0.5px;
+  }
+  .subtitle {
+    color: var(--ink-soft);
+    font-size: 14px;
+    margin: 0;
+  }
+  .card {
+    background: var(--card);
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+  }
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+  }
+  .chip {
+    cursor: pointer;
+    user-select: none;
+    padding: 10px 18px;
+    border-radius: 999px;
+    background: #F4ECE0;
+    color: var(--ink-soft);
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.2s;
+    border: 2px solid transparent;
+  }
+  .chip.active {
+    background: var(--accent-soft);
+    color: var(--ink);
+    border-color: var(--accent);
+  }
+  .chip input {
+    display: none;
+  }
+  .wheel-wrap {
+    position: relative;
+    width: 360px;
+    height: 360px;
+    margin: 12px auto;
+  }
+  .pointer {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 18px solid transparent;
+    border-right: 18px solid transparent;
+    border-top: 28px solid var(--accent);
+    z-index: 2;
+    filter: drop-shadow(0 4px 6px rgba(255, 143, 163, 0.4));
+  }
+  #wheel {
+    width: 360px;
+    height: 360px;
+    display: block;
+    transition: transform 0s;
+  }
+  .actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 8px;
+  }
+  button {
+    font-family: inherit;
+    cursor: pointer;
+    border: none;
+    border-radius: 16px;
+    padding: 14px 28px;
+    font-size: 16px;
+    font-weight: 700;
+    transition: transform 0.1s, box-shadow 0.2s, opacity 0.2s;
+  }
+  button:active { transform: scale(0.96); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 6px 14px rgba(255, 143, 163, 0.4);
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--ink-soft);
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+  .result {
+    text-align: center;
+    padding: 8px 0 4px;
+    min-height: 56px;
+  }
+  .result-empty {
+    color: var(--ink-soft);
+    font-size: 14px;
+  }
+  .result-menu {
+    font-size: 28px;
+    font-weight: 800;
+    margin: 0;
+    color: var(--ink);
+  }
+  .result-cat {
+    display: inline-block;
+    margin-top: 6px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .history-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .history-head h3 {
+    margin: 0;
+    font-size: 16px;
+  }
+  .history-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .history-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    border-radius: 12px;
+    margin-bottom: 6px;
+    background: #FBF5EB;
+    font-size: 14px;
+  }
+  .history-list li .h-menu { font-weight: 600; }
+  .history-list li .h-time { color: var(--ink-soft); font-size: 12px; }
+  .history-empty {
+    color: var(--ink-soft);
+    font-size: 13px;
+    text-align: center;
+    padding: 16px 0;
+  }
+  .toast {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--ink);
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 999px;
+    font-size: 14px;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  @media (max-width: 400px) {
+    .wheel-wrap, #wheel { width: 300px; height: 300px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>오늘 뭐 먹지? 🍱</h1>
+    <p class="subtitle">룰렛 한 방으로 점심 고민 끝</p>
+  </header>
+
+  <div class="card">
+    <div class="filters" id="filters"></div>
+  </div>
+
+  <div class="card">
+    <div class="wheel-wrap">
+      <div class="pointer"></div>
+      <canvas id="wheel" width="720" height="720"></canvas>
+    </div>
+    <div class="actions">
+      <button class="btn-primary" id="spinBtn">돌리기!</button>
+    </div>
+    <div class="result" id="result">
+      <span class="result-empty">버튼을 눌러 룰렛을 돌려보세요</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="history-head">
+      <h3>최근 결과</h3>
+      <button class="btn-ghost" id="clearBtn">초기화</button>
+    </div>
+    <ul class="history-list" id="historyList"></ul>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const MENUS = {
+    한식: ['김치찌개','된장찌개','비빔밥','제육볶음','불고기','냉면','국밥','삼계탕'],
+    일식: ['초밥','라멘','돈카츠','우동','규동','오므라이스','카레'],
+    양식: ['파스타','피자','스테이크','리조또','햄버거','샐러드'],
+    중식: ['짜장면','짬뽕','탕수육','마라탕','마파두부','볶음밥'],
+  };
+  const COLORS = ['#FFD6E0','#FFEFB7','#C7F0DB','#C7DDFF','#E5D4FF','#FFD4A8'];
+  const STORAGE_KEY = 'meal-roulette-v1';
+  const RECENT_EXCLUDE = 3;
+  const HISTORY_MAX = 10;
+
+  const state = {
+    filters: { 한식: true, 일식: true, 양식: true, 중식: true },
+    history: [],
+  };
+
+  const $filters = document.getElementById('filters');
+  const $wheel = document.getElementById('wheel');
+  const $spinBtn = document.getElementById('spinBtn');
+  const $clearBtn = document.getElementById('clearBtn');
+  const $result = document.getElementById('result');
+  const $historyList = document.getElementById('historyList');
+  const $toast = document.getElementById('toast');
+  const ctx = $wheel.getContext('2d');
+
+  let wheelRotation = 0;
+  let spinning = false;
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (data.filters) Object.assign(state.filters, data.filters);
+      if (Array.isArray(data.history)) state.history = data.history;
+    } catch (e) {}
+  }
+  function save() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      filters: state.filters,
+      history: state.history,
+    }));
+  }
+
+  function getCandidates() {
+    const all = [];
+    for (const cat in MENUS) {
+      if (state.filters[cat]) {
+        MENUS[cat].forEach(menu => all.push({ menu, category: cat }));
+      }
+    }
+    const recent = state.history.slice(0, RECENT_EXCLUDE).map(h => h.menu);
+    let filtered = all.filter(c => !recent.includes(c.menu));
+    if (filtered.length === 0) filtered = all;
+    return filtered;
+  }
+
+  function renderFilters() {
+    $filters.innerHTML = '';
+    Object.keys(MENUS).forEach(cat => {
+      const label = document.createElement('label');
+      label.className = 'chip' + (state.filters[cat] ? ' active' : '');
+      label.innerHTML = `<input type="checkbox" ${state.filters[cat] ? 'checked' : ''} /> ${cat}`;
+      label.querySelector('input').addEventListener('change', e => {
+        state.filters[cat] = e.target.checked;
+        label.classList.toggle('active', e.target.checked);
+        save();
+        drawWheel();
+      });
+      $filters.appendChild(label);
+    });
+  }
+
+  function drawWheel() {
+    const candidates = getCandidates();
+    const size = $wheel.width;
+    const r = size / 2;
+    ctx.clearRect(0, 0, size, size);
+
+    if (candidates.length === 0) {
+      ctx.fillStyle = '#F4ECE0';
+      ctx.beginPath();
+      ctx.arc(r, r, r - 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#8C7B68';
+      ctx.font = 'bold 28px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('카테고리를 선택해주세요', r, r);
+      return;
+    }
+
+    ctx.save();
+    ctx.translate(r, r);
+    ctx.rotate(-Math.PI / 2);
+    const N = candidates.length;
+    const sectorAngle = (2 * Math.PI) / N;
+
+    candidates.forEach((c, i) => {
+      const startAngle = i * sectorAngle;
+      const endAngle = startAngle + sectorAngle;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.arc(0, 0, r - 8, startAngle, endAngle);
+      ctx.closePath();
+      ctx.fillStyle = COLORS[i % COLORS.length];
+      ctx.fill();
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+
+      ctx.save();
+      ctx.rotate(startAngle + sectorAngle / 2);
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#4A3B2A';
+      const fontSize = N > 20 ? 22 : N > 12 ? 26 : 30;
+      ctx.font = `bold ${fontSize}px -apple-system, "Apple SD Gothic Neo", sans-serif`;
+      ctx.fillText(c.menu, r - 32, 0);
+      ctx.restore();
+    });
+
+    ctx.restore();
+
+    ctx.beginPath();
+    ctx.arc(r, r, 36, 0, Math.PI * 2);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fill();
+    ctx.strokeStyle = '#FFD6E0';
+    ctx.lineWidth = 6;
+    ctx.stroke();
+  }
+
+  function renderResult(item) {
+    if (!item) {
+      $result.innerHTML = '<span class="result-empty">버튼을 눌러 룰렛을 돌려보세요</span>';
+      return;
+    }
+    $result.innerHTML = `
+      <p class="result-menu">${item.menu}</p>
+      <span class="result-cat">${item.category}</span>
+    `;
+  }
+
+  function renderHistory() {
+    if (state.history.length === 0) {
+      $historyList.innerHTML = '<div class="history-empty">아직 결과가 없어요</div>';
+      return;
+    }
+    $historyList.innerHTML = state.history.slice(0, HISTORY_MAX).map(h => `
+      <li>
+        <span class="h-menu">${h.menu} <small style="color:#8C7B68;font-weight:500;">· ${h.category}</small></span>
+        <span class="h-time">${formatTime(h.ts)}</span>
+      </li>
+    `).join('');
+  }
+
+  function formatTime(ts) {
+    const d = new Date(ts);
+    const now = new Date();
+    const sameDay = d.toDateString() === now.toDateString();
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    if (sameDay) return `${hh}:${mm}`;
+    return `${d.getMonth() + 1}/${d.getDate()} ${hh}:${mm}`;
+  }
+
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => $toast.classList.remove('show'), 2000);
+  }
+
+  function spin() {
+    if (spinning) return;
+    const candidates = getCandidates();
+    if (candidates.length === 0) {
+      showToast('카테고리를 하나 이상 선택해주세요');
+      return;
+    }
+
+    spinning = true;
+    $spinBtn.disabled = true;
+    $spinBtn.textContent = '돌리는 중…';
+
+    const idx = Math.floor(Math.random() * candidates.length);
+    const winner = candidates[idx];
+    const N = candidates.length;
+    const sectorAngle = 360 / N;
+    const targetCenter = idx * sectorAngle + sectorAngle / 2;
+    const deltaMod = (((-targetCenter - wheelRotation) % 360) + 360) % 360;
+    const rotations = 5 + Math.floor(Math.random() * 3);
+    const delta = rotations * 360 + deltaMod;
+    const startAngle = wheelRotation;
+    const finalAngle = wheelRotation + delta;
+
+    const duration = 3800;
+    const start = performance.now();
+
+    function frame(now) {
+      const t = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      const angle = startAngle + (finalAngle - startAngle) * eased;
+      $wheel.style.transform = `rotate(${angle}deg)`;
+      if (t < 1) {
+        requestAnimationFrame(frame);
+      } else {
+        wheelRotation = finalAngle;
+        spinning = false;
+        $spinBtn.disabled = false;
+        $spinBtn.textContent = '다시 돌리기';
+        renderResult(winner);
+        state.history.unshift({ menu: winner.menu, category: winner.category, ts: Date.now() });
+        if (state.history.length > 50) state.history.length = 50;
+        save();
+        renderHistory();
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function clearHistory() {
+    if (state.history.length === 0) return;
+    if (!confirm('히스토리를 모두 초기화할까요?')) return;
+    state.history = [];
+    save();
+    renderHistory();
+    renderResult(null);
+  }
+
+  load();
+  renderFilters();
+  drawWheel();
+  renderHistory();
+  renderResult(null);
+  $spinBtn.addEventListener('click', spin);
+  $clearBtn.addEventListener('click', clearHistory);
+</script>
+</body>
+</html>
